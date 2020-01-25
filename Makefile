@@ -10,27 +10,61 @@
 #                                                                              #
 # **************************************************************************** #
 
-NAME = example
+NAME = fdf
 
-SRC = example.c keyboard.c \
+#Source files
+SRC = main.c keyboard.c help.c read.c \
 
+#Object files
+OBJ = $(addprefix $(OBJECT_DIRECTORY),$(SRC:.c=.o))
 
-OBJ = $(SRC:.c=.o)
+#Compiler
+CC = gcc
+CFLAGS = -Wall -Wextra -Werror -g
 
-all: $(NAME)
+#ft library
+LIBFT = $(LIBFT_DIRECTORY)libft.a
+LIBFT_DIRECTORY = ./libft/
+LIBFT_HEADERS = $(LIBFT_DIRECTORY)includes/
+LIBFT_LINK = -L $(LIBFT_DIRECTORY) -l ft
+
+INCLUDES = -I $(HEADERS_DIRECTORY) -I $(LIBFT_HEADERS) -I $(MINILIBX_HEADERS)
+
+#minilib
+MINILIBX = $(MINILIBX_DIRECTORY)minilibx.a
+MINILIBX_DIRECTORY = ./minilibx/
+MINILIBX_HEADERS = $(MINILIBX_DIRECTORY)
+MINILIBX_LINK = -L $(MINILIBX_DIRECTORY) -l mlx -framework OpenGL -framework AppKit
+
+#directories
+HEADERS_DIRECTORY = ./includes/
+OBJECT_DIRECTORY = ./obj/
+SOURCE_DIRECTORY = ./src/
+
+all: obj $(MINILIBX) $(LIBFT) $(NAME)
+
+obj:
+		mkdir -p $(OBJECT_DIRECTORY)
+
+$(OBJECT_DIRECTORY)%.o:$(SOURCE_DIRECTORY)%.c
+		$(CC) $(CFLAGS) $(INCLUDES) -o $@ -c $<
+
+$(MINILIBX):
+	make -C $(MINILIBX_DIRECTORY)
+
+$(LIBFT):
+	make -C $(LIBFT_DIRECTORY)
 
 $(NAME): $(OBJ)
-	make -C minilibx
-	mv minilibx/libmlx.a .
-	gcc -Wall -g -Werror -Wextra -c $(SRC)
-	gcc -Wall -g -Werror -Wextra -L. -lmlx -framework OpenGL -framework Appkit $(OBJ) -o $(NAME)
+	$(CC) $(CFLAGS) $(OBJ) $(MINILIBX_LINK) $(LIBFT_LINK) -lm -o $(NAME)
 
 clean:
-	make -C minilibx clean
-	rm -rf $(OBJ) libft.a libmlx.a
+	rm -rf $(OBJECT_DIRECTORY)
+	make -C $(MINILIBX_DIRECTORY) clean
+	make -C $(LIBFT_DIRECTORY) clean
 
 fclean: clean
-	make -C minilibx clean
 	rm -rf $(NAME)
+	make -C $(LIBFT_DIRECTORY) fclean
 
 re : fclean all
