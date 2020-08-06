@@ -6,89 +6,95 @@
 /*   By: bedavis <bedavis@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/01/17 14:52:00 by bedavis           #+#    #+#             */
-/*   Updated: 2020/01/22 18:13:12 by bedavis          ###   ########.fr       */
+/*   Updated: 2020/02/04 16:01:28 by bedavis          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "fdf.h"
 
-static double  max(double a, double b)
+static t_point	my_abs(t_point a, t_point b)
 {
-	return (a > b ? a : b);
+	t_point		step;
+
+	if ((b.x - a.x) < 0)
+		step.x = a.x - b.x;
+	else
+		step.x = b.x - a.x;
+	if ((b.y - a.y) < 0)
+		step.y = a.y - b.y;
+	else
+		step.y = b.y - a.y;
+	return (step);
 }
 
-static double my_abs(double a)
+static void		put_pixel(int x, int y, int color, t_fdf *fdf)
 {
-	return (a < 0 ? -a : a);
-}
+	int			i;
 
-void	isomet(double *x, double *y, int z)
-{
-	*x = (*x - *y) * cos(0.8);
-	*y = (*x + *y) * sin(0.8) - z;
-	return;
-}
-
-void 	draw_line(double x, double y, double x1, double y1, t_map *map)
-{
-	double step_x;
-	double step_y;
-	double max1;
-	int z;
-	int z1;
-
-	z = map->flat * map->z_matrix[(int)y][(int)x];
-	z1 = map->flat * map->z_matrix[(int)y1][(int)x1];
-	//зуууум----------------
-	x *= map->zoom;
-	x1 *= map->zoom;
-	y *= map->zoom;
-	y1 *= map->zoom;
-	//цвет--------------
-	map->color = (z || z1) ? 0xC0C0C0 : 0x0000FF;
-	//map->color = (z || z1) ? 0x008000 * z * 10 : 0x000080;
-	//3d--------------------
-	isomet(&x, &y, z);
-	isomet(&x1, &y1, z1);
-	//shift----------
-	x += map->shift_x;
-	y += map->shift_y;
-	x1 += map->shift_x;
-	y1 += map->shift_y;
-
-	step_x = x1 - x;
-	step_y = y1 - y;
-	max1 =  max(my_abs(step_x), my_abs(step_y));
-	step_x = step_x / max1;
-	step_y = step_y / max1;
-	while ((int)(x - x1) || (int)(y - y1))
+	if (x >= 0 && x < WIN_WIDTH && y >= 0 && y < WIN_HEIGHT)
 	{
-		mlx_pixel_put(map->mlx_ptr, map->win_ptr, (int)x, (int)y, map->color);
-		x += step_x;
-		y += step_y;
+		i = (x * fdf->bpp / 8) + (y * fdf->size_line);
+		fdf->data_addr[i] = color;
+		fdf->data_addr[++i] = color >> 8;
+		fdf->data_addr[++i] = color >> 16;
 	}
-
 }
 
-void	draw(t_map *map)
-{
-	int x;
-	int y;
+/*
+** Bresenham's line algorithm
+*/
 
-	print_usage(map);
+void			draw_line(t_point a, t_point b, t_fdf *fdf)
+{
+	t_point		step;
+	t_point		point;
+	t_point		sign;
+	t_point		error;
+
+	step = my_abs(a, b);
+	sign.x = a.x < b.x ? 1 : -1;
+	sign.y = a.y < b.y ? 1 : -1;
+	error.x = step.x - step.y;
+	point = a;
+	while ((point.x != b.x) || (point.y != b.y))
+	{
+		put_pixel(point.x, point.y, get_colr(point, a, b, step), fdf);
+		error.y = error.x * 2;
+		if (error.y > -step.y)
+		{
+			error.x = error.x - step.y;
+			point.x += sign.x;
+		}
+		if (error.y < step.x)
+		{
+			error.x = error.x + step.x;
+			point.y += sign.y;
+		}
+	}
+}
+
+void			draw(t_map *map, t_fdf *fdf)
+{
+	int			x;
+	int			y;
+
 	y = 0;
+	ft_bzero(fdf->data_addr, WIN_WIDTH * WIN_HEIGHT * (fdf->bpp / 8));
 	while (y < map->height)
 	{
 		x = 0;
 		while (x < map->width)
 		{
 			if (x < map->width - 1)
-				draw_line(x, y, x + 1, y, map);
+				draw_line(p3d(make_point(x, y, map), fdf), p3d(make_point(x +
+				1, y, map), fdf), fdf);
 			if (y < map->height - 1)
-				draw_line(x, y, x, y + 1, map);
+				draw_line(p3d(make_point(x, y, map), fdf), p3d(make_point(x, y
+				+ 1, map), fdf), fdf);
 			x++;
 		}
 		y++;
 	}
+	mlx_put_image_to_window(fdf->mlx_ptr, fdf->win_ptr, fdf->img_ptr, 0, 0);
+	print_usage(fdf);
 }
-

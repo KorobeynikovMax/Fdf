@@ -6,136 +6,81 @@
 /*   By: bedavis <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2019/12/23 11:14:57 by bedavis           #+#    #+#             */
-/*   Updated: 2020/01/25 12:49:57 by bedavis          ###   ########.fr       */
+/*   Updated: 2020/02/04 15:20:03 by bedavis          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "fdf.h"
 
-
-int			deal_key(int key, void *param)
+void			init_map(t_map *map)
 {
-	param = 0;
-	ft_putchar((char) key);
-	return (0);
+	map->width = 0;
+	map->height = 0;
+	map->arr_coord = NULL;
+	map->arr_color = NULL;
+	map->z_min = 0;
+	map->z_max = 1;
+	map->is_colored = 0;
+	map->c_press = 0;
 }
 
-int			main(int argc, char **argv)
+void			init_fdf(t_fdf *fdf, t_map *map)
 {
-	int		i;
-	int		j;
-	t_map *map = NULL;
-	map = (t_map*)malloc(sizeof(map) + 100); //change!!!! no 100
+	if (!(fdf->mlx_ptr = mlx_init()))
+		fdf_exit("error: fdf initialization.");
+	if (!(fdf->win_ptr = mlx_new_window(fdf->mlx_ptr, WIN_WIDTH, WIN_HEIGHT,
+			"bedavis' FDF")))
+		fdf_exit("error: fdf initialization.");
+	if (!(fdf->img_ptr = mlx_new_image(fdf->mlx_ptr, WIN_WIDTH, WIN_HEIGHT)))
+		fdf_exit("error: fdf initialization.");
+	fdf->data_addr = mlx_get_data_addr(fdf->img_ptr, &(fdf->bpp),
+			&(fdf->size_line), &(fdf->endian));
+	fdf->map = map;
+	if (!(fdf->mouse = (t_mouse *)ft_memalloc(sizeof(t_mouse))))
+		fdf_exit("error: fdf initialization, mouse.");
+}
 
+void			init_camera(t_fdf *fdf)
+{
+	t_camera *camera;
+
+	if (!(camera = (t_camera *)ft_memalloc(sizeof(t_camera))))
+		fdf_exit("error: camera initialization.");
+	camera->zoom = WIN_HEIGHT / fdf->map->height / 4;
+	camera->alpha = 0;
+	camera->beta = 0;
+	camera->gamma = 0;
+	camera->z_factor = 1;
+	camera->x_shift = 500;
+	camera->y_shift = 300;
+	camera->projection = ISO;
+	fdf->camera = camera;
+}
+
+int				main(int argc, char **argv)
+{
+	int			fd;
+	t_fdf		*fdf;
+	t_map		*map;
+	t_list_z	*listz;
+
+	listz = NULL;
 	if (argc != 2)
-		fdf_exit("error: wrong arguments count.");
-	read_file(argv[1], map);
-	i = 0;
-	while (i < map->height)
-	{
-		j = 0;
-		while (j < map->width)
-		{
-			printf("%4d", map->z_matrix[i][j]);
-			j++;
-		}
-		printf("\n");
-		i++;
-	}
-
-	map->zoom = 5;
-	map->flat = 1;
-	map->mlx_ptr = mlx_init();
-	map->win_ptr = mlx_new_window(map->mlx_ptr, WIN_WIDTH, WIN_HEIGHT,
-			"bedavis");
-	map->shift_x = 280;
-	map->shift_y = 150;
-	draw(map);
-	mlx_key_hook(map->win_ptr, key_press, map);
-	mlx_hook(map.win_ptr, 4, 0, mouse_press, (void *)&map);
-	mlx_hook(map.win_ptr, 5, 0, mouse_release, (void *)&map);
-	mlx_hook(map.win_ptr, 6, 0, mouse_move, (void *)&map);
-	mlx_loop(map->mlx_ptr);
-	mlx_clear_window(map->mlx_ptr, map->win_ptr);
-	mlx_destroy_window(map->mlx_ptr, map->win_ptr);
-	free(map);
-
-/*----	fdf_exit("error: fail reading file.");----------------------------------------------
-	count_h = -1;
-	count_w = -1;
-	mlx.mlx_ptr = mlx_init();
-	mlx.win = mlx_new_window(mlx.mlx_ptr, WIN_WIDTH, WIN_HEIGHT, "bedavis' Fdf");
-	mlx.img->img_ptr = mlx_new_image(mlx.mlx_ptr, WIN_WIDTH, WIN_HEIGHT);
-
-	mlx.img->data = (int *)mlx_get_data_addr(mlx.img->img_ptr, &mlx.img->bpp, &mlx.img->size_l, &mlx.img->endian);
-
-	t_point a;
-	t_point b;
-	a.x = 100;
-	a.y = 300;
-	a.color = 0x0000FF;
-	b.x = 600;
-	b.y = 800;
-	b.color = 0x0000FF;
-	double k = (b.y - a.y)/(b.x - a.x);
-    double bb = (b.x*a.y - a.x*b.y)/(b.x - a.x);
-	while (++count_h < WIN_HEIGHT)
-	{
-		count_w = -1;
-		while (++count_w < WIN_WIDTH)
-		{
-			if ( count_h == (count_w * k + bb))
-				mlx.img->data[count_h * WIN_WIDTH + count_w] = 0xFF00FF;
-			else
-				mlx.img->data[count_h * WIN_WIDTH + count_w] = 0xC0C0C0;
-		}
-	}
-	
-	//char *line;
-	
-	//int result;
-	//result = ft_get_next_line(fd, &line);
-	//printf("%s\n", line);
+		fdf_exit("USAGE: ./fdf MAP_FILE.fdf");
+	if (!(fd = open(argv[1], O_RDONLY)))
+		fdf_exit("error: invalid file.");
+	if (!(map = (t_map *)ft_memalloc(sizeof(t_map))))
+		fdf_exit("error: can't initialize map.");
+	init_map(map);
+	read_file(fd, &listz, map);
+	if (!(fdf = (t_fdf *)ft_memalloc(sizeof(t_fdf))))
+		fdf_exit("error: fdf initialization.");
+	init_fdf(fdf, map);
+	make_arrays(&listz, map);
+	init_camera(fdf);
+	draw(map, fdf);
+	hooks(fdf);
+	mlx_loop(fdf->mlx_ptr);
 	close(fd);
-	int f; 
-	f = ft_isdigit(4);
-	-------------------------------------------------------------*/
-	
-
-
-	//mlx_put_image_to_window(mlx.mlx_ptr, mlx.win, mlx.img->img_ptr, 0, 0);
-	//mlx_key_hook(mlx.win, key_press, (void *)0);
-	//mlx_loop(mlx.mlx_ptr);
-	
-	/*
-	void *mlx_ptr;
-	void *win_ptr;
-	char *s = "PRIVET";
-	t_point a;
-	t_point b;
-	a.x = 10;
-	a.y = 20;
-	a.color = 0x0000FF;
-	b.x = 60;
-	b.y = 10;
-	b.color = 0x0000FF;
-	int		count_w;
-	int		count_h;
-	count_h = -1;
-	count_w = -1;
-	void *img_ptr;
-
-	mlx_ptr = mlx_init();
-	win_ptr = mlx_new_window(mlx_ptr, 300, 200, "ulaalaalaaa");
-	mlx_pixel_put(mlx_ptr, win_ptr, 5, 5, 0xFF0000);
-	mlx_string_put(mlx_ptr, win_ptr, 10, 10, 0x008000, s);
-
-
-
-	mlx_key_hook(win_ptr, deal_key, (void *)0);
-	mlx_loop(mlx_ptr);
-	mlx_clear_window(mlx_ptr, win_ptr);
-	mlx_destroy_window(mlx_ptr, win_ptr);
-	*/
 	return (0);
 }

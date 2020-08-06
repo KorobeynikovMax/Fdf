@@ -13,7 +13,8 @@
 NAME = fdf
 
 #Source files
-SRC = main.c keyboard.c help.c read.c \
+SRC = main.c keyboard.c help.c help2.c read.c colors.c draw.c make_arrays.c \
+	  mouse.c p3d.c usage.c \
 
 #Object files
 OBJ = $(addprefix $(OBJECT_DIRECTORY),$(SRC:.c=.o))
@@ -31,8 +32,8 @@ LIBFT_LINK = -L $(LIBFT_DIRECTORY) -l ft
 INCLUDES = -I $(HEADERS_DIRECTORY) -I $(LIBFT_HEADERS) -I $(MINILIBX_HEADERS)
 
 #minilib
-MINILIBX = $(MINILIBX_DIRECTORY)minilibx.a
-MINILIBX_DIRECTORY = ./minilibx/
+MINILIBX = $(MINILIBX_DIRECTORY)liblmx.a
+MINILIBX_DIRECTORY = ./minilibx_macos/
 MINILIBX_HEADERS = $(MINILIBX_DIRECTORY)
 MINILIBX_LINK = -L $(MINILIBX_DIRECTORY) -l mlx -framework OpenGL -framework AppKit
 
